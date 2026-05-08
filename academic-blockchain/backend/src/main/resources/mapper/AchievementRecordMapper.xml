@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cuit.academic.mapper.AchievementRecordMapper">
+
+    <resultMap id="RecordMap" type="com.cuit.academic.entity.AchievementRecord">
+        <id     property="recordId"       column="record_id"/>
+        <result property="achievementId"  column="achievement_id"/>
+        <result property="chainRecordId"  column="chain_record_id"/>
+        <result property="fileHash"       column="file_hash"/>
+        <result property="metadataHash"   column="metadata_hash"/>
+        <result property="ownerAddress"   column="owner_address"/>
+        <result property="txHash"         column="tx_hash"/>
+        <result property="blockNumber"    column="block_number"/>
+        <result property="recordTime"     column="record_time"/>
+    </resultMap>
+
+    <sql id="Cols">
+        record_id, achievement_id, chain_record_id, file_hash, metadata_hash,
+        owner_address, tx_hash, block_number, record_time
+    </sql>
+
+    <select id="selectById" resultMap="RecordMap">
+        SELECT <include refid="Cols"/> FROM achievement_record WHERE record_id = #{recordId}
+    </select>
+
+    <select id="selectByFileHash" resultMap="RecordMap">
+        SELECT <include refid="Cols"/> FROM achievement_record WHERE file_hash = #{fileHash} LIMIT 1
+    </select>
+
+    <select id="selectByAchievement" resultMap="RecordMap">
+        SELECT <include refid="Cols"/> FROM achievement_record WHERE achievement_id = #{achievementId} LIMIT 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="recordId">
+        INSERT INTO achievement_record(achievement_id, chain_record_id, file_hash,
+                                       metadata_hash, owner_address, tx_hash, block_number)
+        VALUES (#{achievementId}, #{chainRecordId}, #{fileHash},
+                #{metadataHash}, LOWER(#{ownerAddress}), #{txHash}, #{blockNumber})
+    </insert>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM achievement_record
+    </select>
+</mapper>

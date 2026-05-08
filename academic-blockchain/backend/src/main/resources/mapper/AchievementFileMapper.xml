@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cuit.academic.mapper.AchievementFileMapper">
+
+    <resultMap id="FileMap" type="com.cuit.academic.entity.AchievementFile">
+        <id     property="fileId"        column="file_id"/>
+        <result property="achievementId" column="achievement_id"/>
+        <result property="fileName"      column="file_name"/>
+        <result property="filePath"      column="file_path"/>
+        <result property="fileType"      column="file_type"/>
+        <result property="fileSize"      column="file_size"/>
+        <result property="fileHash"      column="file_hash"/>
+        <result property="uploadTime"    column="upload_time"/>
+    </resultMap>
+
+    <sql id="Cols">
+        file_id, achievement_id, file_name, file_path, file_type, file_size, file_hash, upload_time
+    </sql>
+
+    <select id="selectById" resultMap="FileMap">
+        SELECT <include refid="Cols"/> FROM achievement_file WHERE file_id = #{fileId}
+    </select>
+
+    <select id="selectByHash" resultMap="FileMap">
+        SELECT <include refid="Cols"/> FROM achievement_file WHERE file_hash = #{fileHash} LIMIT 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="fileId">
+        INSERT INTO achievement_file(achievement_id, file_name, file_path, file_type, file_size, file_hash)
+        VALUES (#{achievementId}, #{fileName}, #{filePath}, #{fileType}, #{fileSize}, #{fileHash})
+    </insert>
+
+    <delete id="deleteById">
+        DELETE FROM achievement_file WHERE file_id = #{fileId}
+    </delete>
+
+    <select id="listByAchievement" resultMap="FileMap">
+        SELECT <include refid="Cols"/> FROM achievement_file WHERE achievement_id = #{achievementId} ORDER BY upload_time DESC
+    </select>
+</mapper>

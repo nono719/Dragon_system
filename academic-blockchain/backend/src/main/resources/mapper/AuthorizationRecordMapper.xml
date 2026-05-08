@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cuit.academic.mapper.AuthorizationRecordMapper">
+
+    <resultMap id="AuthMap" type="com.cuit.academic.entity.AuthorizationRecord">
+        <id     property="authorizationId" column="authorization_id"/>
+        <result property="achievementId"   column="achievement_id"/>
+        <result property="chainRecordId"   column="chain_record_id"/>
+        <result property="grantorAddress"  column="grantor_address"/>
+        <result property="granteeAddress"  column="grantee_address"/>
+        <result property="permissionType"  column="permission_type"/>
+        <result property="startTime"       column="start_time"/>
+        <result property="endTime"         column="end_time"/>
+        <result property="status"          column="status"/>
+        <result property="txHash"          column="tx_hash"/>
+        <result property="revokeTxHash"    column="revoke_tx_hash"/>
+        <result property="createTime"      column="create_time"/>
+        <result property="updateTime"      column="update_time"/>
+    </resultMap>
+
+    <sql id="Cols">
+        authorization_id, achievement_id, chain_record_id, grantor_address, grantee_address,
+        permission_type, start_time, end_time, status, tx_hash, revoke_tx_hash,
+        create_time, update_time
+    </sql>
+
+    <select id="selectById" resultMap="AuthMap">
+        SELECT <include refid="Cols"/> FROM authorization_record WHERE authorization_id = #{authorizationId}
+    </select>
+
+    <select id="selectActive" resultMap="AuthMap">
+        SELECT <include refid="Cols"/> FROM authorization_record
+        WHERE achievement_id = #{achievementId}
+          AND grantee_address = LOWER(#{granteeAddress})
+          AND status = 'ACTIVE'
+        ORDER BY create_time DESC LIMIT 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="authorizationId">
+        INSERT INTO authorization_record(
+            achievement_id, chain_record_id, grantor_address, grantee_address,
+            permission_type, start_time, end_time, status, tx_hash)
+        VALUES (
+            #{achievementId}, #{chainRecordId}, LOWER(#{grantorAddress}), LOWER(#{granteeAddress}),
+            #{permissionType}, #{startTime}, #{endTime},
+            <choose>
+                <when test="status != null and status != ''">#{status}</when>
+                <otherwise>'ACTIVE'</otherwise>
+            </choose>,
+            #{txHash})
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE authorization_record
+        SET status = #{status},
+            revoke_tx_hash = #{revokeTxHash}
+        WHERE authorization_id = #{authorizationId}
+    </update>
+
+    <select id="listByAchievement" resultMap="AuthMap">
+        SELECT <include refid="Cols"/> FROM authorization_record
+        WHERE achievement_id = #{achievementId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="listByGrantor" resultMap="AuthMap">
+        SELECT <include refid="Cols"/> FROM authorization_record
+        WHERE grantor_address = LOWER(#{grantorAddress})
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="listByGrantee" resultMap="AuthMap">
+        SELECT <include refid="Cols"/> FROM authorization_record
+        WHERE grantee_address = LOWER(#{granteeAddress})
+        <if test="onlyActive != null and onlyActive">
+            AND status = 'ACTIVE'
+            AND (end_time IS NULL OR end_time &gt; NOW())
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="listAll" resultMap="AuthMap">
+        SELECT <include refid="Cols"/> FROM authorization_record ORDER BY create_time DESC
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM authorization_record
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM authorization_record WHERE status = #{status}
+    </select>
+</mapper>

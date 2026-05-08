@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cuit.academic.mapper.VerifyLogMapper">
+
+    <resultMap id="LogMap" type="com.cuit.academic.entity.VerifyLog">
+        <id     property="verifyId"       column="verify_id"/>
+        <result property="achievementId"  column="achievement_id"/>
+        <result property="verifyHash"     column="verify_hash"/>
+        <result property="verifyResult"   column="verify_result"/>
+        <result property="chainRecordId"  column="chain_record_id"/>
+        <result property="ownerAddress"   column="owner_address"/>
+        <result property="recordTime"     column="record_time"/>
+        <result property="operatorAddr"   column="operator_addr"/>
+        <result property="verifyTime"     column="verify_time"/>
+    </resultMap>
+
+    <sql id="Cols">
+        verify_id, achievement_id, verify_hash, verify_result, chain_record_id,
+        owner_address, record_time, operator_addr, verify_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="verifyId">
+        INSERT INTO verify_log(achievement_id, verify_hash, verify_result, chain_record_id,
+                               owner_address, record_time, operator_addr)
+        VALUES (#{achievementId}, #{verifyHash}, #{verifyResult}, #{chainRecordId},
+                LOWER(#{ownerAddress}), #{recordTime}, LOWER(#{operatorAddr}))
+    </insert>
+
+    <select id="listAll" resultMap="LogMap">
+        SELECT <include refid="Cols"/> FROM verify_log ORDER BY verify_time DESC LIMIT 500
+    </select>
+
+    <select id="listByOperator" resultMap="LogMap">
+        SELECT <include refid="Cols"/> FROM verify_log
+        WHERE operator_addr = LOWER(#{operatorAddr})
+        ORDER BY verify_time DESC
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM verify_log
+    </select>
+
+    <select id="countByResult" resultType="long">
+        SELECT COUNT(*) FROM verify_log WHERE verify_result = #{verifyResult}
+    </select>
+</mapper>
