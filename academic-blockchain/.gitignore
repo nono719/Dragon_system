@@ -23,6 +23,8 @@ contracts/coverage/
 contracts/coverage.json
 contracts/typechain-types/
 contracts/.env
+# 本地部署产物（每次 hardhat run 会重新生成）
+contracts/deployments/
 
 # Frontend (Vite)
 frontend/dist/

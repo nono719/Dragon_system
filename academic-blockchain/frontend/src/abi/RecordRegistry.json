@@ -1,0 +1,151 @@
+{
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "recordId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "fileHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "metadataHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "recordTime",
+          "type": "uint256"
+        }
+      ],
+      "name": "RecordRegistered",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "fileHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "exists",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "fileHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getRecordByHash",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "recordId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getRecordInfo",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "fileHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "metadataHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "ownerAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "recordTime",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "fileHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "metadataHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "registerRecord",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalRecords",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b50610425806100206000396000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c8063125f89741461005c57806330287e9214610073578063382ef4ea1461009357806338a699a4146100d5578063f33aede314610107575b600080fd5b6002545b6040519081526020015b60405180910390f35b61006061008136600461038d565b60009081526020819052604090205490565b6100a66100a136600461038d565b61011a565b60405161006a949392919093845260208401929092526001600160a01b03166040830152606082015260800190565b6100f76100e336600461038d565b600090815260208190526040902054151590565b604051901515815260200161006a565b6100606101153660046103a6565b6101ee565b60008181526001602052604081206005015481908190819060ff1661017e5760405162461bcd60e51b8152602060048201526015602482015274149958dbdc9908191bd95cc81b9bdd08195e1a5cdd605a1b60448201526064015b60405180910390fd5b50505060009182525060016020818152604092839020835160c0810185528154815292810154918301829052600281015493830184905260038101546001600160a01b03166060840181905260048201546080850181905260059092015460ff16151560a0909401939093529093565b60008261023d5760405162461bcd60e51b815260206004820152601960248201527f46696c6520686173682063616e6e6f7420626520656d707479000000000000006044820152606401610175565b600083815260208190526040902054156102915760405162461bcd60e51b81526020600482015260156024820152745265636f726420616c72656164792065786973747360581b6044820152606401610175565b600280549060006102a1836103c8565b90915550506040805160c08101825260028054808352602080840188815284860188815233606087018181524260808901818152600160a08b018181526000998a528189528c8a209b518c559651908b015593518989015590516003890180546001600160a01b0319166001600160a01b039092169190911790559151600488015591516005909601805460ff191696151596909617909555925488835282825291859020829055845187815290810193909352909286927ec819b37c8e3c2db2d56ffb5699db49c74f2fb18f4d54e6aeeccedfd60349a3910160405180910390a45060025492915050565b60006020828403121561039f57600080fd5b5035919050565b600080604083850312156103b957600080fd5b50508035926020909101359150565b6000600182016103e857634e487b7160e01b600052601160045260246000fd5b506001019056fea26469706673582212205d77e5fee0d6d34ed852610f19c3b17cf0c46c5180109f51a87af5180eaa7f9a64736f6c63430008140033"
+}

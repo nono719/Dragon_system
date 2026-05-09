@@ -203,12 +203,12 @@ public class BlockchainClient {
         throw new RuntimeException("transaction receipt not found in time: " + txHash);
     }
 
-    private static Bytes32 toBytes32(String hex) {
+    private static org.web3j.abi.datatypes.generated.Bytes32 toBytes32(String hex) {
         byte[] bytes = Numeric.hexStringToByteArray(hex);
         if (bytes.length != 32) {
             throw new IllegalArgumentException("hash must be 32 bytes, got " + bytes.length);
         }
-        return new Bytes32(bytes);
+        return new org.web3j.abi.datatypes.generated.Bytes32(bytes);
     }
 
     @Data
