@@ -1,7 +1,8 @@
 package com.cuit.academic.controller;
 
 import com.cuit.academic.common.ApiResponse;
-import com.cuit.academic.dto.GrantRequest;
+import com.cuit.academic.dto.ConfirmGrantRequest;
+import com.cuit.academic.dto.ConfirmRevokeRequest;
 import com.cuit.academic.entity.AuthorizationRecord;
 import com.cuit.academic.service.AuthorizationService;
 import lombok.RequiredArgsConstructor;
@@ -20,15 +21,18 @@ public class AuthorizationController {
 
     private final AuthorizationService service;
 
-    @PostMapping("/grant")
-    public ApiResponse<AuthorizationRecord> grant(HttpServletRequest req,
-                                                  @Valid @RequestBody GrantRequest body) {
-        return ApiResponse.ok(service.grant(CurrentUser.userId(req), CurrentUser.wallet(req), body));
+    /** 前端钱包 grantAccess 完成后回传 */
+    @PostMapping("/confirm-grant")
+    public ApiResponse<AuthorizationRecord> confirmGrant(HttpServletRequest req,
+                                                         @Valid @RequestBody ConfirmGrantRequest body) {
+        return ApiResponse.ok(service.confirmGrant(CurrentUser.userId(req), CurrentUser.wallet(req), body));
     }
 
-    @PostMapping("/{authorizationId}/revoke")
-    public ApiResponse<AuthorizationRecord> revoke(HttpServletRequest req, @PathVariable Long authorizationId) {
-        return ApiResponse.ok(service.revoke(CurrentUser.userId(req), CurrentUser.wallet(req), authorizationId));
+    /** 前端钱包 revokeAccess 完成后回传 */
+    @PostMapping("/confirm-revoke")
+    public ApiResponse<AuthorizationRecord> confirmRevoke(HttpServletRequest req,
+                                                          @Valid @RequestBody ConfirmRevokeRequest body) {
+        return ApiResponse.ok(service.confirmRevoke(CurrentUser.userId(req), CurrentUser.wallet(req), body));
     }
 
     @GetMapping("/granted")

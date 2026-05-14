@@ -2,6 +2,7 @@ package com.cuit.academic.service.impl;
 
 import com.cuit.academic.blockchain.BlockchainClient;
 import com.cuit.academic.blockchain.HashUtil;
+import com.cuit.academic.dto.ConfirmRegisterRequest;
 import com.cuit.academic.entity.Achievement;
 import com.cuit.academic.entity.AchievementFile;
 import com.cuit.academic.entity.AchievementRecord;
@@ -31,48 +32,59 @@ public class RecordServiceImpl implements RecordService {
     private final BlockchainClient chain;
 
     @Override
-    @Transactional
-    public AchievementRecord registerOnChain(Long achievementId, Long fileId, Long currentUserId, String currentWallet) {
+    public String metadataInputFor(Long achievementId, String ownerWallet) {
         Achievement a = achievementMapper.selectById(achievementId);
+        if (a == null) throw new BizException("成果不存在");
+        return "name=" + a.getName()
+                + "|category=" + (a.getCategory() == null ? "" : a.getCategory())
+                + "|summary=" + (a.getSummary() == null ? "" : a.getSummary())
+                + "|owner=" + (ownerWallet == null ? "" : ownerWallet.toLowerCase());
+    }
+
+    @Override
+    @Transactional
+    public AchievementRecord confirmRegister(ConfirmRegisterRequest req, Long currentUserId, String currentWallet) {
+        Achievement a = achievementMapper.selectById(req.getAchievementId());
         if (a == null) throw new BizException("成果不存在");
         if (!a.getUserId().equals(currentUserId)) throw new BizException("无权对他人的成果发起存证");
 
-        AchievementFile file = fileMapper.selectById(fileId);
+        AchievementFile file = fileMapper.selectById(req.getFileId());
         if (file == null) throw new BizException("文件不存在");
-        if (!file.getAchievementId().equals(achievementId)) throw new BizException("文件与成果不匹配");
+        if (!file.getAchievementId().equals(req.getAchievementId())) throw new BizException("文件与成果不匹配");
 
         AchievementRecord existing = recordMapper.selectByFileHash(file.getFileHash());
         if (existing != null) throw new BizException("该文件已上链存证");
 
-        String fileHashHex = file.getFileHash();
-        String metaInput = "name=" + a.getName()
-                + "|category=" + (a.getCategory() == null ? "" : a.getCategory())
-                + "|summary=" + (a.getSummary() == null ? "" : a.getSummary())
-                + "|owner=" + currentWallet;
-        String metaHashHex = HashUtil.keccak256(metaInput);
+        // 链上权威校验：用 fileHash 反查 chainRecordId，确认前端确实把交易发上去了
+        BigInteger onChainId = chain.getRecordByHash(file.getFileHash());
+        if (onChainId == null || onChainId.signum() == 0) {
+            throw new BizException("链上未查到该文件哈希对应的 record，请确认 MetaMask 交易已确认");
+        }
+        if (req.getChainRecordId() != null && onChainId.longValue() != req.getChainRecordId()) {
+            log.warn("前端上报 chainRecordId={} 与链上反查 {} 不一致，以链上为准",
+                    req.getChainRecordId(), onChainId);
+        }
 
-        BlockchainClient.TxResult tx = chain.registerRecord(fileHashHex, metaHashHex);
-
-        // 通过 getRecordByHash 反查 chainRecordId
-        BigInteger chainRecordId = chain.getRecordByHash(fileHashHex);
-        if (chainRecordId == null || chainRecordId.signum() == 0) {
-            throw new BizException("链上存证后未能查询到 recordId");
+        String metaHashHex = req.getMetadataHash();
+        if (metaHashHex == null || metaHashHex.isEmpty()) {
+            // 兜底：服务端自己算一次
+            metaHashHex = HashUtil.keccak256(metadataInputFor(req.getAchievementId(), currentWallet));
         }
 
         AchievementRecord rec = new AchievementRecord();
-        rec.setAchievementId(achievementId);
-        rec.setChainRecordId(chainRecordId.longValue());
-        rec.setFileHash(fileHashHex);
+        rec.setAchievementId(req.getAchievementId());
+        rec.setChainRecordId(onChainId.longValue());
+        rec.setFileHash(file.getFileHash());
         rec.setMetadataHash(metaHashHex);
         rec.setOwnerAddress(currentWallet.toLowerCase());
-        rec.setTxHash(tx.getTxHash());
-        rec.setBlockNumber(tx.getBlockNumber() == null ? null : tx.getBlockNumber().longValue());
+        rec.setTxHash(req.getTxHash());
+        rec.setBlockNumber(req.getBlockNumber());
         rec.setRecordTime(LocalDateTime.now());
         recordMapper.insert(rec);
 
-        achievementMapper.updateStatus(achievementId, "REGISTERED");
-        log.info("achievement {} registered on chain with record_id {}, tx {}",
-                achievementId, chainRecordId, tx.getTxHash());
+        achievementMapper.updateStatus(req.getAchievementId(), "REGISTERED");
+        log.info("achievement {} confirmed on chain: record_id={}, tx={}",
+                req.getAchievementId(), onChainId, req.getTxHash());
         return rec;
     }
 

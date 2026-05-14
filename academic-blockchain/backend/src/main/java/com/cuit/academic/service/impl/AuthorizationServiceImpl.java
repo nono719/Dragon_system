@@ -1,7 +1,8 @@
 package com.cuit.academic.service.impl;
 
 import com.cuit.academic.blockchain.BlockchainClient;
-import com.cuit.academic.dto.GrantRequest;
+import com.cuit.academic.dto.ConfirmGrantRequest;
+import com.cuit.academic.dto.ConfirmRevokeRequest;
 import com.cuit.academic.entity.Achievement;
 import com.cuit.academic.entity.AchievementRecord;
 import com.cuit.academic.entity.AuthorizationRecord;
@@ -32,7 +33,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
     @Override
     @Transactional
-    public AuthorizationRecord grant(Long currentUserId, String currentWallet, GrantRequest req) {
+    public AuthorizationRecord confirmGrant(Long currentUserId, String currentWallet, ConfirmGrantRequest req) {
         Achievement a = achievementMapper.selectById(req.getAchievementId());
         if (a == null) throw new BizException("成果不存在");
         if (!a.getUserId().equals(currentUserId)) throw new BizException("无权为他人的成果授权");
@@ -42,24 +43,27 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             throw new BizException("成果尚未上链存证，无法授权");
         }
         if (rec.getOwnerAddress() == null || !rec.getOwnerAddress().equalsIgnoreCase(currentWallet)) {
-            throw new BizException("链上记录显示的所有者钱包与当前用户不一致，无法授权");
+            throw new BizException("链上记录显示的所有者钱包与当前用户不一致");
         }
 
         String grantee = req.getGranteeAddress().toLowerCase();
         if (grantee.equalsIgnoreCase(currentWallet)) {
             throw new BizException("不能向自己授权");
         }
-        if (authMapper.selectActive(req.getAchievementId(), grantee) != null) {
-            throw new BizException("当前已有活跃授权记录，请先撤销旧授权");
+
+        // 链上权威校验：MetaMask 签名的 grant 是否真的生效了
+        boolean onChain = chain.checkAccess(BigInteger.valueOf(rec.getChainRecordId()), grantee);
+        if (!onChain) {
+            throw new BizException("链上未查到对该地址的有效授权，请确认 MetaMask 交易已确认");
+        }
+
+        // 旧的活跃授权先标 REVOKED（链上 grantAccess 实际覆盖了 mapping，链下需要同步）
+        AuthorizationRecord oldActive = authMapper.selectActive(req.getAchievementId(), grantee);
+        if (oldActive != null) {
+            authMapper.updateStatus(oldActive.getAuthorizationId(), "REVOKED", null);
         }
 
         long expireSeconds = req.getExpireTime() == null ? 0L : req.getExpireTime();
-
-        BlockchainClient.TxResult tx = chain.grantAccess(
-                BigInteger.valueOf(rec.getChainRecordId()),
-                grantee,
-                req.getPermissionType() == null ? "READ" : req.getPermissionType(),
-                BigInteger.valueOf(expireSeconds));
 
         AuthorizationRecord auth = new AuthorizationRecord();
         auth.setAchievementId(req.getAchievementId());
@@ -73,19 +77,19 @@ public class AuthorizationServiceImpl implements AuthorizationService {
                     java.time.Instant.ofEpochSecond(expireSeconds), ZoneId.systemDefault()));
         }
         auth.setStatus("ACTIVE");
-        auth.setTxHash(tx.getTxHash());
+        auth.setTxHash(req.getTxHash());
         authMapper.insert(auth);
 
         achievementMapper.updateStatus(req.getAchievementId(), "SHARED");
-        log.info("granted access: achievement {}, grantee {}, tx {}",
-                req.getAchievementId(), grantee, tx.getTxHash());
+        log.info("confirmGrant: achievement {} grantee {} tx {}",
+                req.getAchievementId(), grantee, req.getTxHash());
         return auth;
     }
 
     @Override
     @Transactional
-    public AuthorizationRecord revoke(Long currentUserId, String currentWallet, Long authorizationId) {
-        AuthorizationRecord auth = authMapper.selectById(authorizationId);
+    public AuthorizationRecord confirmRevoke(Long currentUserId, String currentWallet, ConfirmRevokeRequest req) {
+        AuthorizationRecord auth = authMapper.selectById(req.getAuthorizationId());
         if (auth == null) throw new BizException("授权记录不存在");
         if (!"ACTIVE".equals(auth.getStatus())) {
             throw new BizException("当前授权已不是活跃状态");
@@ -94,14 +98,18 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             throw new BizException("无权撤销他人发起的授权");
         }
 
-        BlockchainClient.TxResult tx = chain.revokeAccess(
+        // 链上校验：checkAccess 应当返回 false
+        boolean stillActive = chain.checkAccess(
                 BigInteger.valueOf(auth.getChainRecordId()),
                 auth.getGranteeAddress());
+        if (stillActive) {
+            throw new BizException("链上仍显示授权有效，请确认 revokeAccess 交易已确认");
+        }
 
-        authMapper.updateStatus(authorizationId, "REVOKED", tx.getTxHash());
+        authMapper.updateStatus(req.getAuthorizationId(), "REVOKED", req.getTxHash());
         auth.setStatus("REVOKED");
-        auth.setRevokeTxHash(tx.getTxHash());
-        log.info("revoked access: id {}, tx {}", authorizationId, tx.getTxHash());
+        auth.setRevokeTxHash(req.getTxHash());
+        log.info("confirmRevoke: id {} tx {}", req.getAuthorizationId(), req.getTxHash());
         return auth;
     }
 

@@ -33,7 +33,10 @@ export const fileApi = {
 }
 
 export const recordApi = {
-  register: (achievementId, fileId) => http.post('/records/register', { achievementId, fileId }),
+  /** 拿到要做 keccak256 的 metadata 字符串（前端必须和后端用同一份输入算哈希） */
+  metadataInput: (achievementId) => http.get(`/records/metadata-input/${achievementId}`),
+  /** 前端钱包签名 registerRecord 完成后回传链上结果 */
+  confirmRegister: (data) => http.post('/records/confirm-register', data),
   byAchievement: (achievementId) => http.get(`/records/by-achievement/${achievementId}`),
   byHash: (fileHash) => http.get(`/records/by-hash/${fileHash}`)
 }
@@ -51,8 +54,10 @@ export const verifyApi = {
 }
 
 export const authorizationApi = {
-  grant: (data) => http.post('/authorizations/grant', data),
-  revoke: (authorizationId) => http.post(`/authorizations/${authorizationId}/revoke`),
+  /** 前端钱包签名 grantAccess 完成后回传链上结果 */
+  confirmGrant: (data) => http.post('/authorizations/confirm-grant', data),
+  /** 前端钱包签名 revokeAccess 完成后回传链上结果 */
+  confirmRevoke: (data) => http.post('/authorizations/confirm-revoke', data),
   granted: () => http.get('/authorizations/granted'),
   received: (onlyActive) => http.get('/authorizations/received', { params: { onlyActive } }),
   byAchievement: (achievementId) => http.get(`/authorizations/by-achievement/${achievementId}`),
