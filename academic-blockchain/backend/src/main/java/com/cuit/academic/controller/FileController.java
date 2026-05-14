@@ -34,6 +34,7 @@ public class FileController {
         return ApiResponse.ok(service.getMeta(fileId));
     }
 
+    /** 下载文件（需要 DOWNLOAD 权限或所有者） */
     @GetMapping("/{fileId}/download")
     public ResponseEntity<Resource> download(HttpServletRequest req, @PathVariable Long fileId) throws Exception {
         Long userId = CurrentUser.userId(req);
@@ -48,5 +49,44 @@ public class FileController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + displayName + "\"; filename*=UTF-8''" + displayName)
                 .body(res);
+    }
+
+    /**
+     * 在线预览文件（READ 或 DOWNLOAD 权限均可；所有者总是允许）。
+     * 使用 Content-Disposition: inline，让浏览器内嵌渲染（PDF / 图片 / 文本）。
+     */
+    @GetMapping("/{fileId}/preview")
+    public ResponseEntity<Resource> preview(HttpServletRequest req, @PathVariable Long fileId) throws Exception {
+        Long userId = CurrentUser.userId(req);
+        String wallet = CurrentUser.wallet(req);
+        AchievementFile meta = service.getMeta(fileId);
+        Resource res = service.loadForPreview(fileId, userId, wallet);
+
+        String displayName = URLEncoder.encode(meta.getFileName(), StandardCharsets.UTF_8.name())
+                .replace("+", "%20");
+        MediaType mt = guessMediaType(meta);
+        return ResponseEntity.ok()
+                .contentType(mt)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + displayName + "\"; filename*=UTF-8''" + displayName)
+                .header("X-Content-Type-Options", "nosniff")
+                .body(res);
+    }
+
+    private MediaType guessMediaType(AchievementFile meta) {
+        String name = meta.getFileName() == null ? "" : meta.getFileName().toLowerCase();
+        String type = meta.getFileType() == null ? "" : meta.getFileType().toLowerCase();
+        if ("pdf".equals(type) || name.endsWith(".pdf"))   return MediaType.APPLICATION_PDF;
+        if (name.endsWith(".png"))                          return MediaType.IMAGE_PNG;
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return MediaType.IMAGE_JPEG;
+        if (name.endsWith(".gif"))                          return MediaType.IMAGE_GIF;
+        if (name.endsWith(".webp"))                         return MediaType.parseMediaType("image/webp");
+        if (name.endsWith(".svg"))                          return MediaType.parseMediaType("image/svg+xml");
+        if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".csv") || name.endsWith(".log"))
+            return new MediaType("text", "plain", StandardCharsets.UTF_8);
+        if (name.endsWith(".json"))                         return MediaType.APPLICATION_JSON;
+        if (name.endsWith(".xml") || name.endsWith(".html") || name.endsWith(".htm"))
+            return new MediaType("text", "plain", StandardCharsets.UTF_8); // 防止 html 执行脚本
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 }

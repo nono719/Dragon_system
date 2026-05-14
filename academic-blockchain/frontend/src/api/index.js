@@ -29,7 +29,8 @@ export const fileApi = {
     })
   },
   meta: (fileId) => http.get(`/files/${fileId}/meta`),
-  downloadUrl: (fileId) => `/api/files/${fileId}/download`
+  downloadUrl: (fileId) => `/api/files/${fileId}/download`,
+  previewUrl: (fileId) => `/api/files/${fileId}/preview`
 }
 
 export const recordApi = {

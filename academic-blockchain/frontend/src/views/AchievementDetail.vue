@@ -98,8 +98,18 @@
           <template #default="{ row }">{{ humanSize(row.fileSize) }}</template>
         </el-table-column>
         <el-table-column prop="fileHash" label="文件哈希" min-width="320" class-name="mono" />
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
+            <el-button
+              v-if="canPreview"
+              link
+              type="primary"
+              :loading="previewLoadingId === row.fileId"
+              @click="openPreview(row)"
+            >
+              <el-icon><View /></el-icon>在线预览
+            </el-button>
+            <el-divider direction="vertical" v-if="canPreview" />
             <el-tooltip v-if="!canDownload" content="无下载权限（READ 仅可浏览）" placement="top">
               <span>
                 <el-button link disabled type="info">
@@ -114,6 +124,38 @@
         </el-table-column>
       </el-table>
       <el-empty v-else description="暂无文件" />
+
+      <!-- 在线预览 Dialog -->
+      <el-dialog
+        v-model="previewVisible"
+        :title="`在线预览：${previewMeta?.fileName || ''}`"
+        width="80%"
+        top="5vh"
+        @closed="cleanupPreview"
+        destroy-on-close
+      >
+        <div v-if="previewError" class="muted" style="padding: 24px; text-align: center">
+          {{ previewError }}
+        </div>
+        <template v-else-if="previewBlobUrl">
+          <iframe
+            v-if="previewKind === 'pdf' || previewKind === 'html'"
+            :src="previewBlobUrl"
+            style="width: 100%; height: 75vh; border: 0"
+          />
+          <div v-else-if="previewKind === 'image'" style="text-align: center">
+            <img :src="previewBlobUrl" style="max-width: 100%; max-height: 75vh" />
+          </div>
+          <pre v-else-if="previewKind === 'text'" class="text-block">{{ previewText }}</pre>
+          <div v-else class="muted" style="padding: 24px; text-align: center">
+            <el-icon :size="48"><Document /></el-icon>
+            <p>该文件类型（{{ previewMeta?.fileType || 'unknown' }}）不支持在线预览。</p>
+            <p v-if="!canDownload" style="margin-top: 8px">如需查看完整内容，请联系成果所有者授予 DOWNLOAD 权限。</p>
+            <el-button v-else @click="download(previewMeta)" type="primary">改为下载</el-button>
+          </div>
+        </template>
+        <el-skeleton v-else :rows="6" animated />
+      </el-dialog>
 
       <el-divider v-if="auths.length">授权关系（{{ auths.length }}）</el-divider>
       <el-table v-if="auths.length" :data="auths" size="small">
@@ -137,7 +179,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Refresh, Download, Lock } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Lock, View, Document } from '@element-plus/icons-vue'
 import { achievementApi, fileApi, authorizationApi } from '../api'
 import { shortAddr } from '../utils/wallet'
 import { fetchNftData } from '../utils/contracts'
@@ -172,6 +214,75 @@ const canDownload = computed(() => {
   if (isOwner.value) return true
   return myAuth.value?.permissionType === 'DOWNLOAD'
 })
+
+/** 预览权限：所有者 / READ / DOWNLOAD 都可以 */
+const canPreview = computed(() => {
+  if (isOwner.value) return true
+  return !!myAuth.value && myAuth.value.status === 'ACTIVE'
+})
+
+// -------- 在线预览 --------
+const previewVisible = ref(false)
+const previewMeta = ref(null)
+const previewBlobUrl = ref('')
+const previewText = ref('')
+const previewKind = ref('')   // pdf / image / text / html / unsupported
+const previewError = ref('')
+const previewLoadingId = ref(null)
+
+function inferKind(meta, mime) {
+  const name = (meta?.fileName || '').toLowerCase()
+  const m = (mime || '').toLowerCase()
+  if (m.includes('pdf') || name.endsWith('.pdf'))     return 'pdf'
+  if (m.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/.test(name)) return 'image'
+  if (m.startsWith('text/') || m.includes('json') || /\.(txt|md|csv|log|json|xml)$/.test(name)) return 'text'
+  if (m.includes('html') || /\.html?$/.test(name))   return 'html'
+  return 'unsupported'
+}
+
+async function openPreview(row) {
+  previewMeta.value = row
+  previewError.value = ''
+  previewBlobUrl.value = ''
+  previewText.value = ''
+  previewKind.value = ''
+  previewVisible.value = true
+  previewLoadingId.value = row.fileId
+
+  try {
+    const resp = await fetch(fileApi.previewUrl(row.fileId), {
+      headers: { Authorization: `Bearer ${userStore.token}` }
+    })
+    if (!resp.ok) {
+      let msg = '预览失败（HTTP ' + resp.status + '）'
+      try { const j = await resp.json(); msg = j.message || msg } catch (e) { /* ignore */ }
+      previewError.value = msg
+      return
+    }
+    const mime = resp.headers.get('Content-Type') || ''
+    const blob = await resp.blob()
+    const kind = inferKind(row, mime)
+    previewKind.value = kind
+    if (kind === 'text') {
+      previewText.value = await blob.text()
+    } else {
+      previewBlobUrl.value = URL.createObjectURL(blob)
+    }
+  } catch (e) {
+    previewError.value = e.message || String(e)
+  } finally { previewLoadingId.value = null }
+}
+
+function cleanupPreview() {
+  if (previewBlobUrl.value) {
+    URL.revokeObjectURL(previewBlobUrl.value)
+    previewBlobUrl.value = ''
+  }
+  previewText.value = ''
+  previewKind.value = ''
+  previewError.value = ''
+  previewMeta.value = null
+}
 
 async function reloadNft() {
   if (!detail.value?.record?.chainRecordId) return
@@ -262,5 +373,18 @@ async function download(row) {
   white-space: pre-wrap;
   max-height: 200px;
   overflow: auto;
+}
+.text-block {
+  background: #f5f7fa;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 75vh;
+  overflow: auto;
+  margin: 0;
 }
 </style>

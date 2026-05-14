@@ -119,6 +119,31 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public Resource loadForPreview(Long fileId, Long currentUserId, String currentWallet) {
+        AchievementFile f = fileMapper.selectById(fileId);
+        if (f == null) throw new BizException("文件不存在");
+        Achievement a = achievementMapper.selectById(f.getAchievementId());
+        if (a == null) throw new BizException("成果不存在");
+
+        // 预览策略：READ / DOWNLOAD 都允许；所有者总是允许。
+        boolean isOwner = a.getUserId().equals(currentUserId);
+        if (!isOwner) {
+            if (currentWallet == null || currentWallet.isEmpty()) {
+                throw new BizException(403, "未提供身份信息");
+            }
+            AuthorizationRecord auth = authMapper.selectActive(a.getAchievementId(), currentWallet);
+            if (auth == null) throw new BizException(403, "未授权访问该成果");
+            if (auth.getEndTime() != null && auth.getEndTime().isBefore(LocalDateTime.now())) {
+                throw new BizException(403, "授权已过期");
+            }
+        }
+
+        Path p = Paths.get(f.getFilePath());
+        if (!Files.exists(p)) throw new BizException("文件已丢失");
+        return new FileSystemResource(p);
+    }
+
+    @Override
     public AchievementFile getMeta(Long fileId) {
         AchievementFile f = fileMapper.selectById(fileId);
         if (f == null) throw new BizException("文件不存在");

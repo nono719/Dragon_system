@@ -11,7 +11,7 @@
       style="margin-bottom: 12px"
     >
       <ul style="margin: 4px 0 0 18px; padding: 0">
-        <li><b>READ</b>（只读浏览）：可查看成果元数据、链上记录、NFT 凭证，<b>不可下载</b>原文件</li>
+        <li><b>READ</b>（只读浏览）：可查看成果元数据、链上记录、NFT 凭证，<b>可在线预览</b>文件内容（PDF/图片/文本），但<b>不可下载</b>原文件</li>
         <li><b>DOWNLOAD</b>（允许下载）：READ 全部权限 + 下载文件原文</li>
       </ul>
     </el-alert>
@@ -43,17 +43,20 @@
           <el-tag :type="row.status === 'ACTIVE' ? 'success' : 'info'">{{ row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="260" fixed="right">
+      <el-table-column label="操作" width="320" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click="$router.push('/achievements/' + row.achievementId)">查看详情</el-button>
+          <el-button link type="primary" @click="$router.push('/achievements/' + row.achievementId)">
+            <el-icon><View /></el-icon>查看详情/预览
+          </el-button>
+          <el-divider direction="vertical" />
           <el-tooltip
             v-if="row.permissionType !== 'DOWNLOAD'"
-            content="当前授权权限为 READ（只读），不可下载文件"
+            content="当前授权权限为 READ（只读），仅可在线预览，不可下载文件"
             placement="top"
           >
             <span>
               <el-button link disabled type="info">
-                <el-icon><Lock /></el-icon>仅可浏览
+                <el-icon><Lock /></el-icon>无下载权
               </el-button>
             </span>
           </el-tooltip>
