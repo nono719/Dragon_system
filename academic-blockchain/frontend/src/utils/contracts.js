@@ -204,6 +204,20 @@ export async function fetchNftData(chainRecordId) {
   }
 }
 
+/** 读取钱包 ETH 余额（单位：ether 字符串） */
+export async function fetchEthBalance(address) {
+  const { formatEther } = await import('ethers')
+  let provider
+  if (typeof window !== 'undefined' && window.ethereum) {
+    provider = new BrowserProvider(window.ethereum)
+  } else {
+    const cfg = await loadChainConfig()
+    provider = new JsonRpcProvider(cfg.rpcUrl)
+  }
+  const bal = await provider.getBalance(address)
+  return formatEther(bal)
+}
+
 /** 链上 revokeAccess(recordId, grantee) */
 export async function chainRevokeAccess(chainRecordId, grantee) {
   await ensureWalletMatches()
