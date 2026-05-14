@@ -246,6 +246,13 @@ public class BlockchainClient {
                 }
                 String txHash = tx.getTransactionHash();
                 TransactionReceipt receipt = waitForReceipt(txHash);
+                // EIP-658: status="0x1" 成功，"0x0" revert
+                if (receipt.getStatus() != null && !"0x1".equals(receipt.getStatus())) {
+                    throw new RuntimeException("Transaction reverted on chain: tx=" + txHash
+                            + " (gasUsed=" + receipt.getGasUsed() + "). "
+                            + "可能原因：gas-limit 不够 / 合约 require 失败 / 重复存证。"
+                            + "可在 https://sepolia.etherscan.io/tx/" + txHash + " 查看详情。");
+                }
                 TxResult result = new TxResult();
                 result.setTxHash(txHash);
                 result.setBlockNumber(receipt.getBlockNumber());

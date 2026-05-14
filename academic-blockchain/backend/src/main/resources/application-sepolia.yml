@@ -20,10 +20,13 @@ blockchain:
     record-registry: "0xF5618f7e5D8A8113971AF6FDED72D424474A51d3"
     academic-point: "0xda5473df66dbEFac9540d210C305B7499348e69A"
     access-control-manager: "0x5cB7BF1295244E9003f60546e9578D7976C31f77"
-  # Sepolia 真实 gas（registerRecord 实测 ~250k，grantAccess ~120k）：
-  # 10 gwei × 800k = 8M gwei = 0.008 ETH 单笔上限，0.05 ETH 余额可支持 ~6 笔交易
-  gas-price: 10000000000     # 10 gwei
-  gas-limit: 800000
+  # Sepolia 实测 gas：
+  #   registerRecord ~866k（含 ERC721 mint + 链上 base64 tokenURI 构建）
+  #   grantAccess    ~150k
+  # 给 1.5M 留 60% 余量；5 gwei × 1.5M = 7.5M gwei = 0.0075 ETH 单笔上限
+  # （Sepolia base fee 普遍 0.001-2 gwei，5 gwei 足够快速打包）
+  gas-price: 5000000000      # 5 gwei
+  gas-limit: 1500000
 
 logging:
   level:
