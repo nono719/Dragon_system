@@ -11,6 +11,7 @@
  */
 import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
 import { healthApi } from '../api'
+import { useUserStore } from '../store/user'
 import RecordRegistryArtifact from '../abi/RecordRegistry.json'
 import AccessControlManagerArtifact from '../abi/AccessControlManager.json'
 import AcademicPointArtifact from '../abi/AcademicPoint.json'
@@ -47,6 +48,29 @@ async function getSigner() {
   await provider.send('eth_requestAccounts', [])
   return await provider.getSigner()
 }
+
+/**
+ * 校验 MetaMask 当前激活的账户 与 登录态钱包地址 一致。
+ * 不一致就抛错 —— 防止"登录 A、签名 B"导致链上 NFT / 授权归属错乱。
+ */
+export async function ensureWalletMatches() {
+  const userStore = useUserStore()
+  const loggedWallet = (userStore.wallet || '').toLowerCase()
+  if (!loggedWallet) throw new Error('未登录，无法发起链上交易')
+
+  const provider = getProvider()
+  const accounts = await provider.send('eth_requestAccounts', [])
+  const active = accounts && accounts[0] ? accounts[0].toLowerCase() : ''
+  if (!active) throw new Error('MetaMask 未连接账户')
+  if (active !== loggedWallet) {
+    throw new Error(
+      `MetaMask 当前激活的账户 (${shorten(active)}) 与登录账户 (${shorten(loggedWallet)}) 不一致。\n` +
+      `请在 MetaMask 中切换到 ${shorten(loggedWallet)} 后重试；\n` +
+      `或者退出登录，用 ${shorten(active)} 重新登录。`
+    )
+  }
+}
+function shorten(a) { return a ? a.slice(0, 6) + '...' + a.slice(-4) : '' }
 
 /** 校验 MetaMask 当前网络与后端配置的 chainId 一致，不一致则提示用户切换。 */
 export async function ensureCorrectNetwork() {
@@ -92,6 +116,7 @@ export async function getAcademicPoint() {
  * 返回 { txHash, blockNumber, chainRecordId }
  */
 export async function chainRegisterRecord(fileHashHex, metadataHashHex) {
+  await ensureWalletMatches()
   await ensureCorrectNetwork()
   const registry = await getRecordRegistry()
   const tx = await registry.registerRecord(fileHashHex, metadataHashHex)
@@ -123,6 +148,7 @@ export async function chainRegisterRecord(fileHashHex, metadataHashHex) {
 
 /** 链上 grantAccess(recordId, grantee, permissionType, expireTime) */
 export async function chainGrantAccess(chainRecordId, grantee, permissionType, expireTime) {
+  await ensureWalletMatches()
   await ensureCorrectNetwork()
   const acm = await getAccessControlManager()
   const tx = await acm.grantAccess(chainRecordId, grantee, permissionType, expireTime)
@@ -180,6 +206,7 @@ export async function fetchNftData(chainRecordId) {
 
 /** 链上 revokeAccess(recordId, grantee) */
 export async function chainRevokeAccess(chainRecordId, grantee) {
+  await ensureWalletMatches()
   await ensureCorrectNetwork()
   const acm = await getAccessControlManager()
   const tx = await acm.revokeAccess(chainRecordId, grantee)

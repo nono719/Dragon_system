@@ -55,7 +55,7 @@ public class RecordServiceImpl implements RecordService {
         AchievementRecord existing = recordMapper.selectByFileHash(file.getFileHash());
         if (existing != null) throw new BizException("该文件已上链存证");
 
-        // 链上权威校验：用 fileHash 反查 chainRecordId，确认前端确实把交易发上去了
+        // 链上权威校验 1：用 fileHash 反查 chainRecordId
         BigInteger onChainId = chain.getRecordByHash(file.getFileHash());
         if (onChainId == null || onChainId.signum() == 0) {
             throw new BizException("链上未查到该文件哈希对应的 record，请确认 MetaMask 交易已确认");
@@ -63,6 +63,20 @@ public class RecordServiceImpl implements RecordService {
         if (req.getChainRecordId() != null && onChainId.longValue() != req.getChainRecordId()) {
             log.warn("前端上报 chainRecordId={} 与链上反查 {} 不一致，以链上为准",
                     req.getChainRecordId(), onChainId);
+        }
+
+        // 链上权威校验 2：当前登录钱包必须 == 链上 NFT 持有者，否则拒绝落库
+        // 防止"登录 A、用 B 钱包签名 mint"造成的 DB/链上所有权脱钩
+        String onChainOwner = chain.currentOwner(onChainId);
+        if (onChainOwner == null) {
+            throw new BizException("无法读取链上 NFT 持有者");
+        }
+        if (!onChainOwner.equalsIgnoreCase(currentWallet)) {
+            throw new BizException(
+                "链上 NFT 持有者 (" + onChainOwner + ") 与当前登录钱包 (" + currentWallet +
+                ") 不一致 —— 你可能在 MetaMask 中用了其他账户签名。\n" +
+                "请退出登录，用持有 NFT 的钱包重新登录后再操作。"
+            );
         }
 
         String metaHashHex = req.getMetadataHash();
