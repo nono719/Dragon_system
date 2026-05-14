@@ -19,14 +19,25 @@
 
       <el-divider>链上存证</el-divider>
       <el-empty v-if="!detail.record" description="尚未上链存证" />
-      <el-descriptions v-else :column="1" border>
-        <el-descriptions-item label="链上 recordId">{{ detail.record.chainRecordId }}</el-descriptions-item>
-        <el-descriptions-item label="文件哈希" class="mono">{{ detail.record.fileHash }}</el-descriptions-item>
-        <el-descriptions-item label="元数据哈希" class="mono">{{ detail.record.metadataHash }}</el-descriptions-item>
-        <el-descriptions-item label="链上交易哈希" class="mono">{{ detail.record.txHash }}</el-descriptions-item>
-        <el-descriptions-item label="所在区块">{{ detail.record.blockNumber }}</el-descriptions-item>
-        <el-descriptions-item label="存证时间">{{ detail.record.recordTime }}</el-descriptions-item>
-      </el-descriptions>
+      <div v-else>
+        <div class="nft-badge">
+          <div class="nft-badge-left">
+            <el-icon :size="40"><Trophy /></el-icon>
+            <div>
+              <div class="nft-badge-title">Academic Achievement NFT #{{ detail.record.chainRecordId }}</div>
+              <div class="nft-badge-desc">ERC721 凭证 · symbol: AAN · 可在 MetaMask 钱包查看</div>
+            </div>
+          </div>
+        </div>
+        <el-descriptions :column="1" border class="mt-12">
+          <el-descriptions-item label="NFT tokenId / recordId">{{ detail.record.chainRecordId }}</el-descriptions-item>
+          <el-descriptions-item label="文件哈希" class="mono">{{ detail.record.fileHash }}</el-descriptions-item>
+          <el-descriptions-item label="元数据哈希" class="mono">{{ detail.record.metadataHash }}</el-descriptions-item>
+          <el-descriptions-item label="链上交易哈希" class="mono">{{ detail.record.txHash }}</el-descriptions-item>
+          <el-descriptions-item label="所在区块">{{ detail.record.blockNumber }}</el-descriptions-item>
+          <el-descriptions-item label="存证时间">{{ detail.record.recordTime }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
 
       <el-divider>成果文件</el-divider>
       <el-table :data="detail.files" v-if="detail.files?.length">
@@ -121,3 +132,15 @@ async function download(row) {
   URL.revokeObjectURL(url)
 }
 </script>
+
+<style scoped>
+.nft-badge {
+  background: linear-gradient(135deg, #7e57c2 0%, #5e35b1 100%);
+  border-radius: 12px;
+  color: #fff;
+  padding: 20px 24px;
+}
+.nft-badge-left { display: flex; gap: 16px; align-items: center; }
+.nft-badge-title { font-size: 18px; font-weight: 600; }
+.nft-badge-desc { opacity: 0.85; font-size: 13px; margin-top: 4px; }
+</style>

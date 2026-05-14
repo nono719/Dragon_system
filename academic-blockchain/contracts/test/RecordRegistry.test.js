@@ -2,11 +2,11 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
-describe("RecordRegistry", function () {
+describe("RecordRegistry (ERC721)", function () {
   let registry;
   let owner;
   let other;
-  const fileHashA = ethers.id("file-A");        // keccak256("file-A")
+  const fileHashA = ethers.id("file-A");
   const fileHashB = ethers.id("file-B");
   const metaHashA = ethers.id("meta-A");
 
@@ -17,7 +17,7 @@ describe("RecordRegistry", function () {
     await registry.waitForDeployment();
   });
 
-  it("registers a new record and emits event", async function () {
+  it("registers a new record, mints NFT, and emits event", async function () {
     await expect(registry.registerRecord(fileHashA, metaHashA))
       .to.emit(registry, "RecordRegistered")
       .withArgs(1, fileHashA, metaHashA, owner.address, anyValue);
@@ -25,6 +25,12 @@ describe("RecordRegistry", function () {
     expect(await registry.totalRecords()).to.equal(1);
     expect(await registry.exists(fileHashA)).to.be.true;
     expect(await registry.getRecordByHash(fileHashA)).to.equal(1);
+
+    // NFT 已 mint 给调用者
+    expect(await registry.ownerOf(1)).to.equal(owner.address);
+    expect(await registry.balanceOf(owner.address)).to.equal(1);
+    expect(await registry.name()).to.equal("Academic Achievement NFT");
+    expect(await registry.symbol()).to.equal("AAN");
   });
 
   it("rejects empty file hash", async function () {
@@ -56,5 +62,27 @@ describe("RecordRegistry", function () {
     expect(await registry.getRecordByHash(fileHashB)).to.equal(2);
     expect(await registry.totalRecords()).to.equal(2);
   });
-});
 
+  it("tokenURI returns base64-encoded JSON with name, attributes", async function () {
+    await registry.registerRecord(fileHashA, metaHashA);
+    const uri = await registry.tokenURI(1);
+    expect(uri).to.match(/^data:application\/json;base64,/);
+    const base64 = uri.replace(/^data:application\/json;base64,/, "");
+    const json = JSON.parse(Buffer.from(base64, "base64").toString("utf8"));
+    expect(json.name).to.equal("Academic Achievement #1");
+    expect(json.attributes.find((a) => a.trait_type === "recordId").value).to.equal("1");
+    expect(json.attributes.find((a) => a.trait_type === "fileHash").value).to.equal(fileHashA);
+  });
+
+  it("currentOwner reflects NFT transfers", async function () {
+    await registry.registerRecord(fileHashA, metaHashA);
+    expect(await registry.currentOwner(1)).to.equal(owner.address);
+
+    await registry["safeTransferFrom(address,address,uint256)"](
+      owner.address,
+      other.address,
+      1
+    );
+    expect(await registry.currentOwner(1)).to.equal(other.address);
+  });
+});

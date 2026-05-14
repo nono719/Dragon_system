@@ -2,27 +2,29 @@
 pragma solidity ^0.8.20;
 
 import "./RecordRegistry.sol";
+import "./AcademicPoint.sol";
 
 /**
- * AccessControlManager — 学术成果共享授权管理合约
- * 论文 §4.2.2
+ * AccessControlManager — 学术成果共享授权管理合约（论文 §4.2.2 改造版）
  *
  * 关键性质：
- *   1. 授权操作必须由该 recordId 的成果所有者发起（与 RecordRegistry 联动校验）
- *   2. 支持有效期（expireTime = 0 表示长期有效）
- *   3. 链上 + 链下双写：合约负责真值，后端数据库做镜像便于查询
+ *   1. 授权操作必须由该 recordId 当前的 NFT 持有者发起（与 RecordRegistry 联动校验）。
+ *   2. 支持有效期（expireTime = 0 表示长期有效）。
+ *   3. 链上 + 链下双写：合约负责真值，后端数据库做镜像便于查询。
+ *   4. 激励：每次成功 grantAccess 后给 grantor mint `rewardPerGrant` 个 ACP（积分合约可选）。
  */
 contract AccessControlManager {
     struct AuthorizationInfo {
         address owner;
-        string permissionType; // 例如: "READ" / "DOWNLOAD"
-        uint256 expireTime;    // unix 秒；0 表示永久
+        string permissionType;
+        uint256 expireTime;
         bool active;
     }
 
     RecordRegistry public immutable registry;
+    AcademicPoint  public immutable incentive;       // 可为 zero 地址表示不启用积分
+    uint256        public immutable rewardPerGrant;  // 每次授权奖励的积分（含 18 位小数）
 
-    // recordId => grantee => AuthorizationInfo
     mapping(uint256 => mapping(address => AuthorizationInfo)) private authorizations;
 
     event AccessGranted(
@@ -39,14 +41,15 @@ contract AccessControlManager {
         address indexed grantee
     );
 
-    constructor(address registryAddress) {
+    constructor(address registryAddress, address incentiveAddress, uint256 rewardAmount) {
         require(registryAddress != address(0), "registry address cannot be zero");
         registry = RecordRegistry(registryAddress);
+        incentive = AcademicPoint(incentiveAddress); // 允许 zero
+        rewardPerGrant = rewardAmount;
     }
 
     modifier onlyRecordOwner(uint256 recordId) {
-        (, , address ownerAddress, ) = registry.getRecordInfo(recordId);
-        require(ownerAddress == msg.sender, "Only record owner can operate");
+        require(registry.currentOwner(recordId) == msg.sender, "Only record owner can operate");
         _;
     }
 
@@ -71,6 +74,15 @@ contract AccessControlManager {
         });
 
         emit AccessGranted(recordId, msg.sender, grantee, permissionType, expireTime);
+
+        // 激励：try 模式，积分合约调用失败不影响主流程
+        if (address(incentive) != address(0) && rewardPerGrant > 0) {
+            try incentive.reward(msg.sender, rewardPerGrant, "grantAccess") {
+                // success
+            } catch {
+                // ignore — token contract may be paused / minter revoked
+            }
+        }
     }
 
     function revokeAccess(uint256 recordId, address grantee)

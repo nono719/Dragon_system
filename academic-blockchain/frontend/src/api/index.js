@@ -70,3 +70,9 @@ export const adminApi = {
 export const healthApi = {
   ping: () => http.get('/health')
 }
+
+export const incentiveApi = {
+  me: () => http.get('/incentive/me'),
+  balance: (wallet) => http.get(`/incentive/balance/${wallet}`),
+  info: () => http.get('/incentive/info')
+}

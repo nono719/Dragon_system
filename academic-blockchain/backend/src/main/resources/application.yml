@@ -49,7 +49,8 @@ blockchain:
   contracts:
     # 这些地址在 hardhat 部署后写入；deploy.js 会输出
     record-registry: "0x5FbDB2315678afecb367f032d93F642f64180aa3"
-    access-control-manager: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+    academic-point: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+    access-control-manager: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
   gas-price: 20000000000   # 20 gwei
   gas-limit: 6721975
 

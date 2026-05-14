@@ -33,7 +33,8 @@ public class AuthInterceptor implements HandlerInterceptor {
             "/api/users/login",
             "/api/health",
             "/api/verify",        // 核验接口公开（无登录也可用）
-            "/api/verify/by-hash"
+            "/api/verify/by-hash",
+            "/api/incentive/info" // 积分元信息公开
     ));
 
     @Override
@@ -61,6 +62,8 @@ public class AuthInterceptor implements HandlerInterceptor {
     private boolean isWhitelisted(String path) {
         if (WHITELIST.contains(path)) return true;
         if (path.startsWith("/api/error")) return true;
+        // /api/incentive/balance/{wallet} 公开
+        if (path.startsWith("/api/incentive/balance/")) return true;
         return false;
     }
 }

@@ -145,6 +145,59 @@ public class BlockchainClient {
     }
 
     // -----------------------------------------------------------------------
+    // AcademicPoint (ERC20 incentive)
+    // -----------------------------------------------------------------------
+
+    /** ERC20 balanceOf 查询。返回 raw 余额（含 18 位小数）。 */
+    public BigInteger pointBalanceOf(String walletAddress) {
+        String token = properties.getContracts().getAcademicPoint();
+        if (token == null || token.isEmpty()) {
+            return BigInteger.ZERO;
+        }
+        Function fn = new Function(
+                "balanceOf",
+                Collections.singletonList(new Address(walletAddress)),
+                Collections.singletonList(new TypeReference<Uint256>() {}));
+        List<Type> out = callView(token, fn);
+        return out.isEmpty() ? BigInteger.ZERO : (BigInteger) out.get(0).getValue();
+    }
+
+    public BigInteger pointTotalSupply() {
+        String token = properties.getContracts().getAcademicPoint();
+        if (token == null || token.isEmpty()) return BigInteger.ZERO;
+        Function fn = new Function(
+                "totalSupply",
+                Collections.emptyList(),
+                Collections.singletonList(new TypeReference<Uint256>() {}));
+        List<Type> out = callView(token, fn);
+        return out.isEmpty() ? BigInteger.ZERO : (BigInteger) out.get(0).getValue();
+    }
+
+    // -----------------------------------------------------------------------
+    // RecordRegistry — NFT 元数据
+    // -----------------------------------------------------------------------
+
+    /** ERC721 tokenURI(tokenId) → 通常是 data:application/json;base64,... */
+    public String tokenURI(BigInteger tokenId) {
+        Function fn = new Function(
+                "tokenURI",
+                Collections.singletonList(new Uint256(tokenId)),
+                Collections.singletonList(new TypeReference<Utf8String>() {}));
+        List<Type> out = callView(properties.getContracts().getRecordRegistry(), fn);
+        return out.isEmpty() ? "" : (String) out.get(0).getValue();
+    }
+
+    /** 当前 NFT 持有者（可能因转账而变化）。 */
+    public String currentOwner(BigInteger tokenId) {
+        Function fn = new Function(
+                "currentOwner",
+                Collections.singletonList(new Uint256(tokenId)),
+                Collections.singletonList(new TypeReference<Address>() {}));
+        List<Type> out = callView(properties.getContracts().getRecordRegistry(), fn);
+        return out.isEmpty() ? null : ((Address) out.get(0)).getValue();
+    }
+
+    // -----------------------------------------------------------------------
     // 内部：交易发送 & view 调用
     // -----------------------------------------------------------------------
 

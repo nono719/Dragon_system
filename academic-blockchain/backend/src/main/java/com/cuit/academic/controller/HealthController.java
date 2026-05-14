@@ -28,6 +28,7 @@ public class HealthController {
         m.put("backendAddress", chain.backendAddress());
         m.put("recordRegistry", props.getContracts().getRecordRegistry());
         m.put("accessControlManager", props.getContracts().getAccessControlManager());
+        m.put("academicPoint", props.getContracts().getAcademicPoint());
         return ApiResponse.ok(m);
     }
 }

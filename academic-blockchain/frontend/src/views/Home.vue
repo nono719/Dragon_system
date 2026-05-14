@@ -56,8 +56,9 @@
         <el-descriptions-item label="ChainId">{{ health.chainId }}</el-descriptions-item>
         <el-descriptions-item label="RPC 地址">{{ health.rpcUrl }}</el-descriptions-item>
         <el-descriptions-item label="后端代发地址" class="mono">{{ health.backendAddress }}</el-descriptions-item>
-        <el-descriptions-item label="RecordRegistry" class="mono">{{ health.recordRegistry }}</el-descriptions-item>
+        <el-descriptions-item label="RecordRegistry (NFT)" class="mono">{{ health.recordRegistry }}</el-descriptions-item>
         <el-descriptions-item label="AccessControlManager" class="mono">{{ health.accessControlManager }}</el-descriptions-item>
+        <el-descriptions-item label="AcademicPoint (ACP)" class="mono" :span="2">{{ health.academicPoint }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
   </div>

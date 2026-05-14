@@ -19,5 +19,6 @@ public class BlockchainProperties {
     public static class Contracts {
         private String recordRegistry;
         private String accessControlManager;
+        private String academicPoint;
     }
 }
