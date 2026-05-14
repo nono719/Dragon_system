@@ -201,48 +201,89 @@ public class BlockchainClient {
     // 内部：交易发送 & view 调用
     // -----------------------------------------------------------------------
 
-    private TxResult sendTx(String contractAddress, Function function) {
-        try {
-            String encoded = FunctionEncoder.encode(function);
-            EthSendTransaction tx = txManager.sendTransaction(
-                    BigInteger.valueOf(properties.getGasPrice()),
-                    BigInteger.valueOf(properties.getGasLimit()),
-                    contractAddress,
-                    encoded,
-                    BigInteger.ZERO);
-            if (tx.hasError()) {
-                throw new RuntimeException("send tx failed: " + tx.getError().getMessage());
+    /** 是否是网络层瞬时故障（TLS 握手、连接重置、超时），值得重试。 */
+    private static boolean isTransientNetworkError(Throwable e) {
+        Throwable cur = e;
+        while (cur != null) {
+            String msg = cur.getMessage();
+            if (msg != null) {
+                String lower = msg.toLowerCase();
+                if (lower.contains("handshake")
+                        || lower.contains("connection reset")
+                        || lower.contains("connection refused")
+                        || lower.contains("timed out")
+                        || lower.contains("timeout")
+                        || lower.contains("eof")
+                        || lower.contains("broken pipe")
+                        || lower.contains("unexpected end of stream")) {
+                    return true;
+                }
             }
-            String txHash = tx.getTransactionHash();
-            TransactionReceipt receipt = waitForReceipt(txHash);
-            TxResult result = new TxResult();
-            result.setTxHash(txHash);
-            result.setBlockNumber(receipt.getBlockNumber());
-            result.setStatus(receipt.getStatus());
-            return result;
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Blockchain transaction error: " + e.getMessage(), e);
+            String cls = cur.getClass().getSimpleName();
+            if ("SSLException".equals(cls) || "SSLHandshakeException".equals(cls)
+                    || "SocketTimeoutException".equals(cls) || "ConnectException".equals(cls)) {
+                return true;
+            }
+            cur = cur.getCause();
         }
+        return false;
+    }
+
+    private TxResult sendTx(String contractAddress, Function function) {
+        Exception lastErr = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                String encoded = FunctionEncoder.encode(function);
+                EthSendTransaction tx = txManager.sendTransaction(
+                        BigInteger.valueOf(properties.getGasPrice()),
+                        BigInteger.valueOf(properties.getGasLimit()),
+                        contractAddress,
+                        encoded,
+                        BigInteger.ZERO);
+                if (tx.hasError()) {
+                    // 节点端业务错误（余额不足/revert 等），不重试
+                    throw new RuntimeException("send tx failed: " + tx.getError().getMessage());
+                }
+                String txHash = tx.getTransactionHash();
+                TransactionReceipt receipt = waitForReceipt(txHash);
+                TxResult result = new TxResult();
+                result.setTxHash(txHash);
+                result.setBlockNumber(receipt.getBlockNumber());
+                result.setStatus(receipt.getStatus());
+                return result;
+            } catch (Exception e) {
+                lastErr = e;
+                if (!isTransientNetworkError(e)) break;
+                log.warn("sendTx transient error (attempt {}/3): {}", attempt, e.getMessage());
+                try { Thread.sleep(1500L * attempt); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+            }
+        }
+        if (lastErr instanceof RuntimeException) throw (RuntimeException) lastErr;
+        throw new RuntimeException("Blockchain transaction error: " + (lastErr == null ? "unknown" : lastErr.getMessage()), lastErr);
     }
 
     private List<Type> callView(String contractAddress, Function function) {
-        try {
-            String encoded = FunctionEncoder.encode(function);
-            EthCall response = web3j.ethCall(
-                    Transaction.createEthCallTransaction(credentials.getAddress(), contractAddress, encoded),
-                    DefaultBlockParameterName.LATEST
-            ).send();
-            if (response.hasError()) {
-                throw new RuntimeException("view call failed: " + response.getError().getMessage());
+        Exception lastErr = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                String encoded = FunctionEncoder.encode(function);
+                EthCall response = web3j.ethCall(
+                        Transaction.createEthCallTransaction(credentials.getAddress(), contractAddress, encoded),
+                        DefaultBlockParameterName.LATEST
+                ).send();
+                if (response.hasError()) {
+                    throw new RuntimeException("view call failed: " + response.getError().getMessage());
+                }
+                return FunctionReturnDecoder.decode(response.getValue(), function.getOutputParameters());
+            } catch (Exception e) {
+                lastErr = e;
+                if (!isTransientNetworkError(e)) break;
+                log.warn("callView transient error (attempt {}/3): {}", attempt, e.getMessage());
+                try { Thread.sleep(800L * attempt); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
             }
-            return FunctionReturnDecoder.decode(response.getValue(), function.getOutputParameters());
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Blockchain view call error: " + e.getMessage(), e);
         }
+        if (lastErr instanceof RuntimeException) throw (RuntimeException) lastErr;
+        throw new RuntimeException("Blockchain view call error: " + (lastErr == null ? "unknown" : lastErr.getMessage()), lastErr);
     }
 
     private TransactionReceipt waitForReceipt(String txHash) throws Exception {
