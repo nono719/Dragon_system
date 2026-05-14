@@ -11,10 +11,21 @@
         v-if="!hasMetamask"
         type="warning"
         title="未检测到 MetaMask"
-        description="请在 Chrome 或 Edge 中安装 MetaMask 扩展，并切换到 Hardhat 本地网络（chainId 31337）"
         :closable="false"
         show-icon
-      />
+      >
+        <template #default>
+          <p style="margin: 0 0 6px">请在 <b>Chrome / Edge</b> 中：</p>
+          <ol style="margin: 0 0 0 18px; padding: 0">
+            <li>安装 <a href="https://metamask.io/download" target="_blank">MetaMask 扩展</a></li>
+            <li>切换到 <b>Sepolia</b> 测试网（chainId 11155111），或本地 <b>Hardhat</b>（chainId 31337）</li>
+            <li>刷新本页面（F5）</li>
+          </ol>
+          <p class="muted" style="margin: 6px 0 0; font-size: 12px">
+            当前浏览器：{{ uaShort }}
+          </p>
+        </template>
+      </el-alert>
 
       <div class="connect-section" v-else>
         <el-form :model="form">
@@ -47,9 +58,11 @@ const userStore = useUserStore()
 const form = ref({ username: '' })
 const loading = ref(false)
 const hasMetamask = ref(true)
+const uaShort = ref('')
 
 onMounted(() => {
   hasMetamask.value = typeof window !== 'undefined' && !!window.ethereum
+  uaShort.value = typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 100) : ''
 })
 
 async function connect() {
