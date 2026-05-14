@@ -9,7 +9,7 @@
  *
  * 注意：合约地址从后端 /api/health 接口读取，所以前端不需要硬编码网络 / chainId。
  */
-import { BrowserProvider, Contract } from 'ethers'
+import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
 import { healthApi } from '../api'
 import RecordRegistryArtifact from '../abi/RecordRegistry.json'
 import AccessControlManagerArtifact from '../abi/AccessControlManager.json'
@@ -129,6 +129,53 @@ export async function chainGrantAccess(chainRecordId, grantee, permissionType, e
   const receipt = await tx.wait()
   if (receipt.status !== 1) throw new Error('授权交易 revert')
   return { txHash: receipt.hash, blockNumber: receipt.blockNumber }
+}
+
+/**
+ * View-only 读取链上 NFT 数据。
+ * 优先用 MetaMask 的 BrowserProvider（不暴露 Alchemy API key 到浏览器）；
+ * 没装 MetaMask 时 fallback 到 RPC URL。
+ * 返回 { tokenId, owner, tokenURI, metadata } —— metadata 是从 base64 data: URI 解码出来的 JSON
+ */
+export async function fetchNftData(chainRecordId) {
+  const cfg = await loadChainConfig()
+  let provider
+  if (typeof window !== 'undefined' && window.ethereum) {
+    provider = new BrowserProvider(window.ethereum)
+  } else {
+    provider = new JsonRpcProvider(cfg.rpcUrl)
+  }
+  const registry = new Contract(cfg.addresses.RecordRegistry, [
+    'function ownerOf(uint256) view returns (address)',
+    'function tokenURI(uint256) view returns (string)',
+    'function name() view returns (string)',
+    'function symbol() view returns (string)'
+  ], provider)
+
+  const [owner, uri, name, symbol] = await Promise.all([
+    registry.ownerOf(chainRecordId),
+    registry.tokenURI(chainRecordId),
+    registry.name(),
+    registry.symbol()
+  ])
+
+  let metadata = null
+  if (uri && uri.startsWith('data:application/json;base64,')) {
+    const b64 = uri.slice('data:application/json;base64,'.length)
+    try {
+      // atob 在浏览器原生可用
+      metadata = JSON.parse(atob(b64))
+    } catch (e) { /* metadata 解码失败，保持 null */ }
+  }
+
+  return {
+    tokenId: chainRecordId.toString(),
+    contractName: name,
+    contractSymbol: symbol,
+    owner,
+    tokenURI: uri,
+    metadata
+  }
 }
 
 /** 链上 revokeAccess(recordId, grantee) */

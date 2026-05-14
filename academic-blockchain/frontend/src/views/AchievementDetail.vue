@@ -24,19 +24,57 @@
           <div class="nft-badge-left">
             <el-icon :size="40"><Trophy /></el-icon>
             <div>
-              <div class="nft-badge-title">Academic Achievement NFT #{{ detail.record.chainRecordId }}</div>
-              <div class="nft-badge-desc">ERC721 凭证 · symbol: AAN · 可在 MetaMask 钱包查看</div>
+              <div class="nft-badge-title">{{ nft?.contractName || 'Academic Achievement NFT' }} #{{ detail.record.chainRecordId }}</div>
+              <div class="nft-badge-desc">
+                ERC721 凭证 · symbol: {{ nft?.contractSymbol || 'AAN' }}
+                <span v-if="nft?.owner"> · 当前持有者：<span class="mono">{{ shortAddr(nft.owner) }}</span></span>
+              </div>
             </div>
+          </div>
+          <div class="nft-badge-actions">
+            <el-button :loading="loadingNft" size="small" plain @click="reloadNft">
+              <el-icon><Refresh /></el-icon>刷新链上数据
+            </el-button>
           </div>
         </div>
         <el-descriptions :column="1" border class="mt-12">
           <el-descriptions-item label="NFT tokenId / recordId">{{ detail.record.chainRecordId }}</el-descriptions-item>
           <el-descriptions-item label="文件哈希" class="mono">{{ detail.record.fileHash }}</el-descriptions-item>
           <el-descriptions-item label="元数据哈希" class="mono">{{ detail.record.metadataHash }}</el-descriptions-item>
-          <el-descriptions-item label="链上交易哈希" class="mono">{{ detail.record.txHash }}</el-descriptions-item>
+          <el-descriptions-item label="链上交易哈希" class="mono">
+            <a :href="etherscanTx(detail.record.txHash)" target="_blank">{{ detail.record.txHash }} ↗</a>
+          </el-descriptions-item>
           <el-descriptions-item label="所在区块">{{ detail.record.blockNumber }}</el-descriptions-item>
           <el-descriptions-item label="存证时间">{{ detail.record.recordTime }}</el-descriptions-item>
         </el-descriptions>
+
+        <el-divider>NFT 链上数据（直接从合约读取）</el-divider>
+        <el-skeleton v-if="loadingNft && !nft" :rows="3" animated />
+        <el-alert v-else-if="nftError" type="warning" :title="'读取链上 NFT 失败：' + nftError" :closable="false" show-icon />
+        <div v-else-if="nft">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="合约名称">{{ nft.contractName }} ({{ nft.contractSymbol }})</el-descriptions-item>
+            <el-descriptions-item label="当前持有者 (ownerOf)" class="mono">
+              <a :href="etherscanAddr(nft.owner)" target="_blank">{{ nft.owner }} ↗</a>
+            </el-descriptions-item>
+            <template v-if="nft.metadata">
+              <el-descriptions-item label="NFT 名称">{{ nft.metadata.name }}</el-descriptions-item>
+              <el-descriptions-item label="描述">{{ nft.metadata.description }}</el-descriptions-item>
+              <el-descriptions-item label="链上属性 (attributes)">
+                <el-table :data="nft.metadata.attributes || []" size="small" stripe>
+                  <el-table-column prop="trait_type" label="trait_type" width="140" />
+                  <el-table-column prop="value" label="value" class-name="mono" />
+                </el-table>
+              </el-descriptions-item>
+            </template>
+            <el-descriptions-item label="原始 tokenURI">
+              <details>
+                <summary class="muted" style="cursor: pointer">点击展开（{{ nft.tokenURI.length }} 字符）</summary>
+                <pre class="uri-block">{{ nft.tokenURI }}</pre>
+              </details>
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
       </div>
 
       <el-divider>成果文件</el-divider>
@@ -75,11 +113,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
 import { achievementApi, fileApi, authorizationApi } from '../api'
 import { shortAddr } from '../utils/wallet'
+import { fetchNftData } from '../utils/contracts'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../store/user'
 
@@ -88,6 +127,20 @@ const userStore = useUserStore()
 const detail = ref(null)
 const auths = ref([])
 const loading = ref(false)
+const nft = ref(null)
+const loadingNft = ref(false)
+const nftError = ref('')
+
+async function reloadNft() {
+  if (!detail.value?.record?.chainRecordId) return
+  loadingNft.value = true
+  nftError.value = ''
+  try {
+    nft.value = await fetchNftData(detail.value.record.chainRecordId)
+  } catch (e) {
+    nftError.value = e.shortMessage || e.message || String(e)
+  } finally { loadingNft.value = false }
+}
 
 onMounted(async () => {
   loading.value = true
@@ -95,8 +148,12 @@ onMounted(async () => {
     const id = route.params.id
     detail.value = await achievementApi.detail(id)
     auths.value = await authorizationApi.byAchievement(id)
+    if (detail.value?.record?.chainRecordId) await reloadNft()
   } finally { loading.value = false }
 })
+
+function etherscanTx(h) { return `https://sepolia.etherscan.io/tx/${h}` }
+function etherscanAddr(a) { return `https://sepolia.etherscan.io/address/${a}` }
 
 function statusLabel(s) { return { CREATED: '未存证', REGISTERED: '已存证', SHARED: '已共享' }[s] || s }
 function statusTag(s)   { return { CREATED: 'info', REGISTERED: 'success', SHARED: 'warning' }[s] || 'info' }
@@ -139,8 +196,29 @@ async function download(row) {
   border-radius: 12px;
   color: #fff;
   padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 .nft-badge-left { display: flex; gap: 16px; align-items: center; }
 .nft-badge-title { font-size: 18px; font-weight: 600; }
 .nft-badge-desc { opacity: 0.85; font-size: 13px; margin-top: 4px; }
+.nft-badge-actions :deep(.el-button) {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border-color: rgba(255,255,255,0.3);
+}
+.uri-block {
+  background: #f5f7fa;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow: auto;
+}
 </style>
