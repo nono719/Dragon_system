@@ -76,29 +76,45 @@ function logout() {
 
 <style scoped>
 .app-header {
-  background: linear-gradient(135deg, #1f4cf0 0%, #4d8bff 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #4c1d95 100%);
   color: #fff;
-  height: 60px !important;
+  height: 64px !important;
   padding: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.12);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .header-inner {
-  height: 60px;
+  height: 64px;
   max-width: 1400px;
   margin: 0 auto;
   display: flex;
   align-items: center;
-  padding: 0 24px;
-  gap: 24px;
+  padding: 0 28px;
+  gap: 28px;
 }
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 18px;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.01em;
   cursor: pointer;
   white-space: nowrap;
+  padding: 6px 12px 6px 10px;
+  margin-left: -10px;
+  border-radius: 10px;
+  transition: background .2s ease;
+}
+.brand:hover { background: rgba(255, 255, 255, 0.06); }
+.brand .el-icon {
+  background: var(--gradient-primary);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 4px 12px rgba(91, 108, 255, 0.4);
 }
 .header-menu {
   flex: 1;
@@ -106,23 +122,54 @@ function logout() {
 }
 .header-menu :deep(.el-menu-item) {
   border-bottom: none !important;
+  height: 64px !important;
+  line-height: 64px !important;
+  padding: 0 16px !important;
+  font-size: 14px !important;
+  position: relative;
+  transition: color .2s ease;
+}
+.header-menu :deep(.el-menu-item:hover) {
+  background: transparent !important;
+  color: #fff !important;
+}
+.header-menu :deep(.el-menu-item.is-active) {
+  background: transparent !important;
+}
+.header-menu :deep(.el-menu-item.is-active::after) {
+  content: '';
+  position: absolute;
+  bottom: 14px;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ffd04b, #ec4899);
 }
 .header-right { display: flex; align-items: center; gap: 12px; }
 .user-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
+  gap: 8px;
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
   cursor: pointer;
   color: #fff;
+  font-size: 13px;
+  transition: background .2s ease, border-color .2s ease, transform .12s ease;
 }
-.user-chip .muted { color: rgba(255, 255, 255, 0.7); }
+.user-chip:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+.user-chip .muted { color: rgba(255, 255, 255, 0.65); }
 .app-footer {
   text-align: center;
   background: #fff;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--c-border-soft);
   height: 48px !important;
   line-height: 48px;
 }
