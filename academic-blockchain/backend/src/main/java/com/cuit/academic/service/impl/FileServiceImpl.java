@@ -91,18 +91,25 @@ public class FileServiceImpl implements FileService {
         Achievement a = achievementMapper.selectById(f.getAchievementId());
         if (a == null) throw new BizException("成果不存在");
 
-        // 文件可下载条件：
-        // 1) 当前用户是成果所有者；
-        // 2) 当前钱包对此成果有 ACTIVE 授权且未过期。
+        // 文件下载策略（论文 §2.2.4 授权机制）：
+        //   1) 当前用户是成果所有者 → 直接放行
+        //   2) 当前钱包对此成果有 ACTIVE 授权 且 permissionType = DOWNLOAD → 放行
+        //   3) READ 权限的被授权人允许查看元数据，但不允许下载原文
         boolean isOwner = a.getUserId().equals(currentUserId);
         if (!isOwner) {
             if (currentWallet == null || currentWallet.isEmpty()) {
                 throw new BizException(403, "未提供身份信息");
             }
             AuthorizationRecord auth = authMapper.selectActive(a.getAchievementId(), currentWallet);
-            if (auth == null) throw new BizException(403, "未授权访问");
+            if (auth == null) throw new BizException(403, "未授权访问该成果");
             if (auth.getEndTime() != null && auth.getEndTime().isBefore(LocalDateTime.now())) {
                 throw new BizException(403, "授权已过期");
+            }
+            // 关键：READ 权限不允许下载文件原文
+            String perm = auth.getPermissionType() == null ? "READ" : auth.getPermissionType().toUpperCase();
+            if (!"DOWNLOAD".equals(perm)) {
+                throw new BizException(403,
+                        "当前授权权限为 \"" + perm + "\"，仅可查看元数据，不可下载文件。如需下载请联系成果所有者授予 DOWNLOAD 权限。");
             }
         }
 

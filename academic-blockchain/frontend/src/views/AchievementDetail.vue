@@ -78,6 +78,19 @@
       </div>
 
       <el-divider>成果文件</el-divider>
+      <el-alert
+        v-if="!isOwner && myAuth"
+        :type="canDownload ? 'success' : 'info'"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 8px"
+      >
+        <template #default>
+          你对该成果有 <b>{{ myAuth.permissionType }}</b> 权限：
+          <span v-if="canDownload">可下载文件原文。</span>
+          <span v-else>仅可查看元数据/哈希，<b>不可下载原文件</b>。如需下载请联系所有者授予 DOWNLOAD 权限。</span>
+        </template>
+      </el-alert>
       <el-table :data="detail.files" v-if="detail.files?.length">
         <el-table-column prop="fileName" label="文件名" />
         <el-table-column prop="fileType" label="类型" width="100" />
@@ -87,7 +100,16 @@
         <el-table-column prop="fileHash" label="文件哈希" min-width="320" class-name="mono" />
         <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="download(row)">下载</el-button>
+            <el-tooltip v-if="!canDownload" content="无下载权限（READ 仅可浏览）" placement="top">
+              <span>
+                <el-button link disabled type="info">
+                  <el-icon><Lock /></el-icon>无权限
+                </el-button>
+              </span>
+            </el-tooltip>
+            <el-button v-else link type="primary" @click="download(row)">
+              <el-icon><Download /></el-icon>下载
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -113,9 +135,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Lock } from '@element-plus/icons-vue'
 import { achievementApi, fileApi, authorizationApi } from '../api'
 import { shortAddr } from '../utils/wallet'
 import { fetchNftData } from '../utils/contracts'
@@ -130,6 +152,26 @@ const loading = ref(false)
 const nft = ref(null)
 const loadingNft = ref(false)
 const nftError = ref('')
+
+/** 当前用户是否为成果所有者（按钱包地址匹配） */
+const isOwner = computed(() => {
+  return detail.value?.owner?.walletAddress?.toLowerCase() === userStore.wallet?.toLowerCase()
+})
+
+/** 当前用户作为被授权方的活跃授权（如果有） */
+const myAuth = computed(() => {
+  if (!userStore.wallet) return null
+  return auths.value.find(a =>
+    a.granteeAddress?.toLowerCase() === userStore.wallet.toLowerCase() &&
+    a.status === 'ACTIVE'
+  )
+})
+
+/** 下载权限：所有者 总是可以；其他人需要 DOWNLOAD 授权 */
+const canDownload = computed(() => {
+  if (isOwner.value) return true
+  return myAuth.value?.permissionType === 'DOWNLOAD'
+})
 
 async function reloadNft() {
   if (!detail.value?.record?.chainRecordId) return
