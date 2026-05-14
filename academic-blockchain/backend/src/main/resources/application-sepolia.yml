@@ -20,9 +20,10 @@ blockchain:
     record-registry: "0xF5618f7e5D8A8113971AF6FDED72D424474A51d3"
     academic-point: "0xda5473df66dbEFac9540d210C305B7499348e69A"
     access-control-manager: "0x5cB7BF1295244E9003f60546e9578D7976C31f77"
-  # Sepolia 真实 gas，让 web3j 自动估算更稳；这里仅给上限
-  gas-price: 30000000000     # 30 gwei
-  gas-limit: 3000000
+  # Sepolia 真实 gas（registerRecord 实测 ~250k，grantAccess ~120k）：
+  # 10 gwei × 800k = 8M gwei = 0.008 ETH 单笔上限，0.05 ETH 余额可支持 ~6 笔交易
+  gas-price: 10000000000     # 10 gwei
+  gas-limit: 800000
 
 logging:
   level:
