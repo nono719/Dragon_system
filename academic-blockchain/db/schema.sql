@@ -124,6 +124,31 @@ CREATE TABLE `verify_log` (
 ) ENGINE=InnoDB COMMENT='核验记录表';
 
 -- ----------------------------------------------------------------------------
+-- 7. operation_log 操作审计日志（论文 §2.2.1 角色 / 权限设计扩展）
+--    由后端 AOP 切面 (OperationLogAspect) 自动写入所有
+--    POST / PUT / DELETE 请求的执行记录，用于审计 + 越权检测。
+-- ----------------------------------------------------------------------------
+CREATE TABLE `operation_log` (
+  `log_id`         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '日志编号',
+  `user_id`        BIGINT       DEFAULT NULL            COMMENT '操作用户编号（未登录时为 NULL）',
+  `wallet_address` VARCHAR(64)  DEFAULT NULL            COMMENT '操作用户钱包',
+  `role`           VARCHAR(16)  DEFAULT NULL            COMMENT '操作时的角色快照',
+  `method`         VARCHAR(8)   NOT NULL                COMMENT 'HTTP 方法 (POST/PUT/DELETE)',
+  `path`           VARCHAR(255) NOT NULL                COMMENT '请求路径',
+  `operation`      VARCHAR(96)  NOT NULL                COMMENT 'Controller.method',
+  `params`         TEXT                                 COMMENT '请求参数 (脱敏 + 截断 1500 字符)',
+  `status`         VARCHAR(16)  NOT NULL                COMMENT 'SUCCESS / FAILURE',
+  `error_message`  TEXT                                 COMMENT '失败异常信息',
+  `request_ip`     VARCHAR(64)  DEFAULT NULL            COMMENT '请求来源 IP',
+  `duration_ms`    BIGINT       DEFAULT NULL            COMMENT '处理耗时（毫秒）',
+  `create_time`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`log_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_create` (`create_time`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB COMMENT='操作审计日志';
+
+-- ----------------------------------------------------------------------------
 -- 测试数据：1 个管理员 + 2 个普通用户
 -- 钱包地址使用 Hardhat 默认账号
 -- ----------------------------------------------------------------------------

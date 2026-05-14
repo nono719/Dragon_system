@@ -10,6 +10,8 @@ public interface UserMapper {
     User selectByWallet(@Param("walletAddress") String walletAddress);
     int insert(User user);
     int update(User user);
+    int updateRole(@Param("userId") Long userId, @Param("role") String role);
+    long countByRole(@Param("role") String role);
     List<User> listAll();
     long count();
 }

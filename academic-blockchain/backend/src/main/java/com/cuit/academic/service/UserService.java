@@ -14,4 +14,7 @@ public interface UserService {
     User getByWallet(String wallet);
     User updateProfile(Long userId, UpdateProfileRequest req);
     List<User> listAll();
+
+    /** 管理员变更他人角色（USER ↔ ADMIN）；自降级保护 + 至少保留 1 个 ADMIN。 */
+    User changeRole(Long operatorUserId, Long targetUserId, String newRole);
 }

@@ -3,6 +3,7 @@ package com.cuit.academic.service;
 import com.cuit.academic.dto.AdminStatsVO;
 import com.cuit.academic.entity.Achievement;
 import com.cuit.academic.entity.AuthorizationRecord;
+import com.cuit.academic.entity.OperationLog;
 import com.cuit.academic.entity.User;
 import com.cuit.academic.entity.VerifyLog;
 
@@ -14,4 +15,5 @@ public interface AdminService {
     List<Achievement> listAchievements(String keyword);
     List<AuthorizationRecord> listAuthorizations();
     List<VerifyLog> listVerifyLogs();
+    List<OperationLog> listOperationLogs(int limit);
 }

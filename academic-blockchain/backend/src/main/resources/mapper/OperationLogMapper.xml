@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cuit.academic.mapper.OperationLogMapper">
+
+    <resultMap id="LogMap" type="com.cuit.academic.entity.OperationLog">
+        <id     property="logId"         column="log_id"/>
+        <result property="userId"        column="user_id"/>
+        <result property="walletAddress" column="wallet_address"/>
+        <result property="role"          column="role"/>
+        <result property="method"        column="method"/>
+        <result property="path"          column="path"/>
+        <result property="operation"     column="operation"/>
+        <result property="params"        column="params"/>
+        <result property="status"        column="status"/>
+        <result property="errorMessage"  column="error_message"/>
+        <result property="requestIp"     column="request_ip"/>
+        <result property="durationMs"    column="duration_ms"/>
+        <result property="createTime"    column="create_time"/>
+    </resultMap>
+
+    <sql id="Cols">
+        log_id, user_id, wallet_address, role, method, path, operation,
+        params, status, error_message, request_ip, duration_ms, create_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="logId">
+        INSERT INTO operation_log(user_id, wallet_address, role, method, path,
+                                  operation, params, status, error_message,
+                                  request_ip, duration_ms)
+        VALUES (#{userId}, LOWER(#{walletAddress}), #{role}, #{method}, #{path},
+                #{operation}, #{params}, #{status}, #{errorMessage},
+                #{requestIp}, #{durationMs})
+    </insert>
+
+    <select id="listLatest" resultMap="LogMap">
+        SELECT <include refid="Cols"/> FROM operation_log
+        ORDER BY create_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM operation_log
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM operation_log WHERE status = #{status}
+    </select>
+</mapper>
