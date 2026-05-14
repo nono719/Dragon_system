@@ -44,9 +44,23 @@ public class AchievementController {
         return ApiResponse.ok(service.detail(id));
     }
 
+    /**
+     * 我的成果列表。
+     * 不传 pageNum / pageSize 时返回完整列表（兼容旧调用方）；
+     * 传 pageNum >= 1 时启用分页，返回 PageResult。
+     */
     @GetMapping("/mine")
-    public ApiResponse<List<Achievement>> mine(HttpServletRequest req) {
-        return ApiResponse.ok(service.listMine(CurrentUser.userId(req)));
+    public ApiResponse<?> mine(HttpServletRequest req,
+                               @RequestParam(required = false) Integer pageNum,
+                               @RequestParam(required = false) Integer pageSize) {
+        Long userId = CurrentUser.userId(req);
+        if (pageNum != null && pageNum > 0) {
+            int ps = (pageSize == null || pageSize <= 0) ? 10 : pageSize;
+            PageHelper.startPage(pageNum, ps);
+            List<Achievement> list = service.listMine(userId);
+            return ApiResponse.ok(PageResult.of(new PageInfo<>(list)));
+        }
+        return ApiResponse.ok(service.listMine(userId));
     }
 
     @GetMapping

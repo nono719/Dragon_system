@@ -12,7 +12,7 @@ export const achievementApi = {
   update: (id, data) => http.put(`/achievements/${id}`, data),
   delete: (id) => http.delete(`/achievements/${id}`),
   detail: (id) => http.get(`/achievements/${id}`),
-  mine: () => http.get('/achievements/mine'),
+  mine: (params) => http.get('/achievements/mine', { params }),
   list: (params) => http.get('/achievements', { params })
 }
 
