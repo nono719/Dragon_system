@@ -115,7 +115,29 @@ npm run dev
 5. 切换 MetaMask 到第二个账户 → 重新登录前端 → 点击 **我被授权的成果** → 看到上一步的授权 → 点击 **检查并下载** 即可下载成果文件。
 6. 切回授权方账户 → 在 **授权共享** 列表点 **撤销** → 再次切到第二账户尝试下载，应被拒绝。
 
-## 十、部署到 Sepolia 测试网（可选）
+## 🌐 Sepolia 已部署合约（直接使用）
+
+如果你想跳过本地部署，直接连到已经部署在 Sepolia 测试网上的合约：
+
+```bash
+cd backend
+JAVA_HOME=/opt/homebrew/opt/openjdk@11/libexec/openjdk.jdk/Contents/Home \
+  MYSQL_PASSWORD='your_db_password' \
+  SPRING_PROFILES_ACTIVE=sepolia \
+  SEPOLIA_RPC_URL='https://eth-sepolia.g.alchemy.com/v2/<your-key>' \
+  BLOCKCHAIN_PRIVATE_KEY='0x<your-test-private-key>' \
+  mvn -DskipTests spring-boot:run
+```
+
+应用会自动加载 `application-sepolia.yml`，连到下列合约：
+
+- RecordRegistry: [`0xF5618f7e5D8A8113971AF6FDED72D424474A51d3`](https://sepolia.etherscan.io/address/0xF5618f7e5D8A8113971AF6FDED72D424474A51d3)
+- AcademicPoint:  [`0xda5473df66dbEFac9540d210C305B7499348e69A`](https://sepolia.etherscan.io/address/0xda5473df66dbEFac9540d210C305B7499348e69A)
+- AccessControlManager: [`0x5cB7BF1295244E9003f60546e9578D7976C31f77`](https://sepolia.etherscan.io/address/0x5cB7BF1295244E9003f60546e9578D7976C31f77)
+
+> **注意**：`BLOCKCHAIN_PRIVATE_KEY` 是 *后端代发交易* 的账户私钥，**必须使用专门的测试账户**，并且这个账户需要有 Sepolia 测试 ETH（去 [Google Cloud Faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) 领）。
+
+## 十、自行部署到 Sepolia 测试网（可选）
 
 1. 在 [Alchemy](https://www.alchemy.com/) / [Infura](https://www.infura.io/) 申请 Sepolia 节点 RPC URL。
 2. 在 [Sepolia 水龙头](https://sepoliafaucet.com/) 领取测试 ETH。

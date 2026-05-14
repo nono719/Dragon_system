@@ -1,0 +1,30 @@
+# Sepolia 测试网 profile
+# 启动方式：
+#   mvn spring-boot:run -Dspring-boot.run.profiles=sepolia
+# 或者环境变量：
+#   SPRING_PROFILES_ACTIVE=sepolia mvn spring-boot:run
+#
+# 必填环境变量：
+#   BLOCKCHAIN_PRIVATE_KEY  —— 后端代发交易的测试账户私钥（带 0x）
+#
+# 可选环境变量：
+#   SEPOLIA_RPC_URL —— 默认走公共节点，可换成 Alchemy / Infura 的 URL
+#
+# 注意：此 profile 仅用于演示。Sepolia 是真测试网，每笔交易要等 ~12-15 秒出块。
+
+blockchain:
+  rpc-url: ${SEPOLIA_RPC_URL:https://rpc.sepolia.org}
+  chain-id: 11155111
+  private-key: ${BLOCKCHAIN_PRIVATE_KEY}
+  contracts:
+    record-registry: "0xF5618f7e5D8A8113971AF6FDED72D424474A51d3"
+    academic-point: "0xda5473df66dbEFac9540d210C305B7499348e69A"
+    access-control-manager: "0x5cB7BF1295244E9003f60546e9578D7976C31f77"
+  # Sepolia 真实 gas，让 web3j 自动估算更稳；这里仅给上限
+  gas-price: 30000000000     # 30 gwei
+  gas-limit: 3000000
+
+logging:
+  level:
+    com.cuit.academic: INFO
+    org.web3j: INFO

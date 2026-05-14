@@ -5,6 +5,16 @@
 
 本仓库为论文《基于区块链的学术成果确权与共享平台设计与实现》的完整实现，包含智能合约、后端服务、前端 DApp 三大部分。
 
+## 🌐 已部署的 Sepolia 测试网合约
+
+| 合约 | 地址 | Etherscan |
+| --- | --- | --- |
+| RecordRegistry (ERC721 NFT) | `0xF5618f7e5D8A8113971AF6FDED72D424474A51d3` | [查看](https://sepolia.etherscan.io/address/0xF5618f7e5D8A8113971AF6FDED72D424474A51d3) |
+| AcademicPoint (ERC20 ACP) | `0xda5473df66dbEFac9540d210C305B7499348e69A` | [查看](https://sepolia.etherscan.io/address/0xda5473df66dbEFac9540d210C305B7499348e69A) |
+| AccessControlManager | `0x5cB7BF1295244E9003f60546e9578D7976C31f77` | [查看](https://sepolia.etherscan.io/address/0x5cB7BF1295244E9003f60546e9578D7976C31f77) |
+
+chainId: `11155111` · 部署者: `0xC1f9bD0992a4aBB246D5F6fbB82fB781AaA3365D`
+
 ## 系统架构
 
 ```
